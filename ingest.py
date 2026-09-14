@@ -34,6 +34,8 @@ RESET = "\033[0m"
 
 REPO_ID = "hmar-heritage-org/corpus-archive"
 REPO_URL = f"https://huggingface.co/datasets/{REPO_ID}"
+TOOL_NAME = "corpus-archive-tool"
+TOOL_VERSION = "v1.2"
 TOKEN_PATH = Path.home() / ".huggingface" / "token"
 CONFIG_FILE = Path.home() / ".corpus_archive_config.json"
 
@@ -741,9 +743,25 @@ def ingest_to_repo(repo_path: Path, source_pdf: Path, metadata: dict):
 def push_to_remote(repo_path: Path, item_id: str, title: str, token: str, username: str):
     """Commits and pushes changes using Git, with fallback to Hugging Face API."""
     print(f"\n{BOLD}{YELLOW}[Phase 4/4] Publishing to Hugging Face Archive...{RESET}")
-    commit_msg = f"archive: ingest Item {item_id} ({title})"
 
-    print(f"  Commit message: {CYAN}{commit_msg}{RESET}")
+    default_base = f"archive: ingest Item {item_id} ({title})"
+    via_marker = f"--via {TOOL_NAME} {TOOL_VERSION}"
+    default_msg = f"{default_base} {via_marker}"
+
+    print(f"\n{BOLD}Git Commit Message:{RESET}")
+    print(f"  Default: {CYAN}{default_msg}{RESET}")
+    custom = safe_input("Enter custom note (or press [ENTER] to use default): ")
+
+    if custom:
+        custom_clean = custom.replace(via_marker, "").strip()
+        if f"[{item_id}]" not in custom_clean and f"Item {item_id}" not in custom_clean:
+            commit_msg = f"archive: [Item {item_id}] {custom_clean} {via_marker}"
+        else:
+            commit_msg = f"archive: {custom_clean} {via_marker}"
+    else:
+        commit_msg = default_msg
+
+    print(f"  Active commit message: {GREEN}{commit_msg}{RESET}\n")
 
     # Method 1: Standard Git commit & push
     if (repo_path / ".git").exists():
