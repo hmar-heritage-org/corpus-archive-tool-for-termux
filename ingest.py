@@ -104,23 +104,67 @@ def save_config(cfg: dict):
         print(f"{YELLOW}Warning: Could not save config file: {e}{RESET}")
 
 
-def check_termux_storage():
-    """Checks if Termux has storage permission, prompts user if needed."""
-    is_termux = "TERMUX_VERSION" in os.environ or "/data/data/com.termux" in os.environ.get("PREFIX", "")
+def ensure_termux_storage() -> bool:
+    """
+    Ensures Android storage permissions and symlinks are set up in Termux.
+    Automatically triggers termux-setup-storage if unconfigured and verifies filesystem access.
+    """
+    is_termux = (
+        "TERMUX_VERSION" in os.environ or
+        "/data/data/com.termux" in os.environ.get("PREFIX", "") or
+        Path("/data/data/com.termux").exists()
+    )
+
     if not is_termux:
         print(f"{DIM}Desktop Linux / macOS environment detected.{RESET}")
-        return
+        return True
 
-    storage_shared = Path.home() / "storage" / "shared"
+    storage_dir = Path.home() / "storage"
+    shared_dir = storage_dir / "shared"
     sdcard = Path("/sdcard")
-    if not storage_shared.exists() and not sdcard.exists():
-        print(f"{YELLOW}Warning: Android internal storage links not detected.{RESET}")
-        print("To allow file access in Termux, run:")
-        print(f"  {CYAN}termux-setup-storage{RESET}")
-        print("and tap 'Allow' on the Android permissions popup.")
-        resp = input("\nHave you granted storage permission? (Y/n): ").strip().lower()
-        if resp in ("", "y", "yes"):
-            time.sleep(1)
+
+    # 1. Test if shared storage already exists and is readable
+    for p in (shared_dir, sdcard):
+        if p.exists():
+            try:
+                os.listdir(str(p))
+                return True
+            except (PermissionError, OSError):
+                pass
+
+    # 2. Trigger automated termux-setup-storage
+    print(f"\n{BOLD}{YELLOW}[Termux Android Storage Permission Required]{RESET}")
+    print("To discover your PDF books across your device, Termux needs storage permission.")
+    print(f"Triggering {CYAN}termux-setup-storage{RESET} now...")
+
+    try:
+        subprocess.run(["termux-setup-storage"], check=False)
+    except FileNotFoundError:
+        print(f"{YELLOW}Note: 'termux-setup-storage' binary not found. Skipping auto-trigger.{RESET}")
+
+    print(f"\n{CYAN}{BOLD}👉 Look at your phone screen and tap 'ALLOW' on the Android permissions popup.{RESET}")
+    input(f"Once you have tapped 'Allow', press {BOLD}[ENTER]{RESET} to continue...")
+
+    # Wait up to 5 seconds for Termux to link the storage directory
+    for _ in range(5):
+        for p in (shared_dir, sdcard):
+            if p.exists():
+                try:
+                    os.listdir(str(p))
+                    print(f"  {GREEN}✓ Storage permission granted and verified!{RESET}")
+                    return True
+                except (PermissionError, OSError):
+                    pass
+        time.sleep(1)
+
+    # 3. Fallback guidance if permission was denied or popup suppressed
+    print(f"\n{RED}Notice: Storage access could not be confirmed automatically.{RESET}")
+    print("If Android did not show the permission popup, you can enable it manually:")
+    print(f"  {BOLD}Android Settings -> Apps -> Termux -> Permissions -> Files and media -> Allow{RESET}")
+    retry = input("\nWould you like to run 'termux-setup-storage' again? (Y/n): ").strip().lower()
+    if retry in ("", "y", "yes"):
+        return ensure_termux_storage()
+    return False
 
 
 # ==============================================================================
@@ -776,7 +820,7 @@ def run_pdf_ingestion(repo_path: Path, token: str, username: str):
 
 def main():
     print_banner()
-    check_termux_storage()
+    ensure_termux_storage()
 
     # Phase 1: Upfront Token Authentication & Validation
     token, username = get_and_validate_token()
