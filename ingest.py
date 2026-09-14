@@ -57,13 +57,15 @@ LANGUAGES = [
 ]
 
 EXCLUDE_DIRS = {
-    "Android/data",
-    "Android/obb",
+    "Android",
+    "node_modules",
+    "vendor",
+    "gems",
+    "staging",
     ".thumbnails",
     ".trash",
     ".cache",
     ".git",
-    "node_modules",
     "proc",
     "sys"
 }
@@ -130,11 +132,11 @@ def scan_storage_for_pdfs(max_results=25):
     for root in roots:
         try:
             for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
-                # Prune excluded directories
-                rel = os.path.relpath(dirpath, root)
-                if any(ex in rel for ex in EXCLUDE_DIRS) or any(part.startswith(".") for part in rel.split(os.sep)):
-                    dirnames[:] = []
-                    continue
+                # Prune excluded and hidden directories in-place
+                dirnames[:] = [
+                    d for d in dirnames
+                    if not d.startswith(".") and d not in EXCLUDE_DIRS
+                ]
 
                 for fname in filenames:
                     if fname.lower().endswith(".pdf"):
