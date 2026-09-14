@@ -61,11 +61,30 @@ To push documents to `hmar-heritage-org/corpus-archive`, you need a **Hugging Fa
 
 ---
 
-## Step-by-Step TUI Flow
+## Step-by-Step Ingestion Workflow
 
-When you run `python ingest.py`, the tool guides you through 7 quick prompts:
+When you run `python ingest.py`, it proceeds through 4 sequential phases:
 
-1. **Select PDF**: Choose from the detected PDFs discovered across your device's internal storage (or enter a custom path).
+### Phase 1: Hugging Face Authentication & Token Validation
+- Asks for (or reads cached) Hugging Face Write Token (`hf_...`).
+- Validates the token immediately against the Hugging Face API (`whoami`) and checks write role permission upfront.
+
+### Phase 2: Local Repository Verification & Auto-Sync
+- Checks if `corpus-archive` exists locally.
+- If not found: Offers to clone `hmar-heritage-org/corpus-archive` (recommended) or use a custom path.
+- Automatically executes `git pull --rebase` to ensure local files are 100% synchronized with the remote archive.
+
+### Phase 3: Action Menu
+- Displays the interactive menu:
+  - `[1] Ingest & Archive a PDF Document` (Active)
+  - `[2] Ingest Structured JSON Dataset` *(Coming in v1.3)*
+  - `[3] Archive Research Repository (CSV/Git)` *(Coming in v1.3)*
+  - `[4] Audit & Validate Archive Records` *(Coming in v1.3)*
+  - `[5] Switch Hugging Face Account / Token`
+  - `[Q] Exit`
+
+### Phase 4: PDF Archival & Publishing
+1. **Select PDF**: Choose from the detected PDFs discovered across internal storage (`/sdcard`, `~/storage/shared`, `Downloads/`, `Documents/`, etc.) or enter a custom path.
 2. **Category**: Choose from 7 standardized classifications:
    - `Linguistics & Dictionaries`
    - `School Textbooks & MIL`
@@ -76,32 +95,8 @@ When you run `python ingest.py`, the tool guides you through 7 quick prompts:
    - `Customary Laws & Governance`
 3. **Primary Language**: Select content language (`hmr` for Hmar, `lus` for Mizo, `en` for English, etc.).
 4. **Bibliographical Details**: Enter book/document title, author(s) or publishing body, publisher/society, publication year, and a brief description.
-5. **HF Token**: Enter your Hugging Face write token (only asked on first run).
-6. **Staging**: The tool creates the local representative directory structure under `./staging/` and updates:
-   - `data/pdf/{id}/file.pdf`
-   - `data/pdf/{id}/metadata.json` (Tier 3)
-   - `data/pdf/metadata.jsonl` (Tier 2)
-   - `viewer.jsonl`
-   - `metadata.jsonl` (Tier 1)
-   - `README.md` (Catalog Table)
-7. **Publish**: Performs an atomic commit directly to the live Hugging Face dataset.
-
----
-
-## Representative Directory Layout
-
-```text
-staging/
-├── data/
-│   └── pdf/
-│       ├── metadata.jsonl            # Tier 2 Format Catalog Index
-│       └── 0013/                     # New Document Directory
-│           ├── file.pdf              # Ingested PDF
-│           └── metadata.json         # Tier 3 Detailed Item Metadata
-├── metadata.jsonl                    # Tier 1 Root Registry Pointer Index
-├── viewer.jsonl                      # Dedicated Viewer Preview Catalog
-└── README.md                         # Markdown Dataset Card & Catalog Table
-```
+5. **Local 3-Tier Archival**: Automatically places `data/pdf/{id}/file.pdf` and updates Tier 3 metadata, Tier 2 format catalog, Tier 1 pointer index, viewer preview, and catalog table in README.
+6. **Publish to Hugging Face**: Commits and pushes changes directly to the remote repository (or dry-run to keep changes local).
 
 ---
 

@@ -2,6 +2,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 staging/
+corpus-archive/
 .corpus_archive_config.json
 .env
 *.pdf

@@ -7,18 +7,15 @@ I am using an Android phone with the Termux terminal application. I am not an ex
 
 ---
 
-### Project Background & Context:
-- Repository: `hmar-heritage-org/corpus-archive` (on Hugging Face Datasets).
-- Archival Organization: Hmar Heritage Foundation (https://hmarheritage.pages.dev).
-- We have an automated mobile ingestion tool built specifically for Termux on GitHub:
-  `https://github.com/hmar-heritage-org/corpus-archive-tool-for-termux.git`
-- The tool (`ingest.py`) automatically:
-  1. Scans internal storage (`/sdcard`, `Downloads/`, `Documents/`, etc.) to find the PDF document.
-  2. Asks for book details (Title, Author, Category, Language, Year, Publisher).
-  3. Uses a Hugging Face Write Access Token to fetch the latest archive indexes.
-  4. Automatically assigns the next 4-digit sequential ID (e.g. `0013`).
-  5. Builds the representative 3-tier directory structure (`data/pdf/{id}/file.pdf`, Tier 3 metadata, Tier 2 format catalog, Tier 1 pointer index, viewer preview, and catalog table in README).
-  6. Atomically commits and publishes the new item directly to the live Hugging Face dataset.
+### Project Background & Architecture:
+- Live Dataset: `hmar-heritage-org/corpus-archive` (on Hugging Face Datasets).
+- Archival Body: Hmar Heritage Foundation (https://hmarheritage.pages.dev).
+- Tool Repository: `https://github.com/hmar-heritage-org/corpus-archive-tool-for-termux.git`
+- The tool (`ingest.py`) runs a clear sequential flow:
+  1. **Phase 1: Token Validation Upfront**: Checks and validates my Hugging Face Write Token via `whoami`.
+  2. **Phase 2: Local Repo Verification & Sync**: Checks if `corpus-archive` exists locally; if not, prompts to clone it (recommended) or provide a custom path, and runs `git pull` to sync the latest remote updates.
+  3. **Phase 3: Action Menu**: Prompts what to do. Option `1` is "Ingest & Archive a PDF Document" (other options like JSON or Repo are marked feature not implemented).
+  4. **Phase 4: PDF Ingestion**: Scans internal phone storage for PDFs, lets me pick the file, prompts for category and metadata, writes the 3-tier files, and commits/pushes directly to Hugging Face!
 
 ---
 
@@ -28,9 +25,9 @@ I am using an Android phone with the Termux terminal application. I am not an ex
    - Briefly let me know that you're going to help me upload my PDF to the archive step-by-step.
    - Ask me:
      - Do I already have Termux installed on my Android phone? (If not, tell me to install it from F-Droid: https://f-droid.org/packages/com.termux/ because the Play Store version is obsolete).
-     - Is my PDF document already on my phone (in Downloads, WhatsApp, or Documents)?
-     - Do I have a Hugging Face account?
-   - Wait for my answer.
+     - Is my PDF document already on my phone (e.g. in Downloads, WhatsApp, or Documents)?
+     - Do I have a Hugging Face account and a Write token? (If not, guide me to get one at https://huggingface.co/settings/tokens).
+   - Wait for my response.
 
 2. **Step: Storage Permission**:
    - Guide me to open Termux and run:
@@ -48,27 +45,22 @@ I am using an Android phone with the Termux terminal application. I am not an ex
      `cd corpus-archive-tool-for-termux`
      `pip install -r requirements.txt`
 
-5. **Step: Hugging Face Write Token**:
-   - Explain clearly how to get my token:
-     a. Log in to https://huggingface.co
-     b. Go to Settings -> Access Tokens (https://huggingface.co/settings/tokens)
-     c. Click "Create new token"
-     d. Choose Type: "Write"
-     e. Name it anything (e.g. "Termux") and copy the token starting with `hf_...`.
-
-6. **Step: Run the Tool and Walk Through the Prompts**:
+5. **Step: Run the Tool and Follow the Sequential Flow**:
    - Guide me to run:
      `python ingest.py`
-   - Explain what each prompt in the tool means:
-     - **[1/7] Select PDF**: Pick the number corresponding to my PDF from the list of files detected on my storage.
-     - **[2/7] Category**: Choose from the 7 categories (e.g., 1 for Linguistics & Dictionaries, 2 for School Textbooks & MIL, 3 for History & Ethnography, etc.).
-     - **[3/7] Language**: Choose language code (`hmr` for Hmar, `lus` for Mizo, `en` for English, etc.).
-     - **[4/7] Bibliographical details**: Title, Authors (e.g. author name or Hmar Heritage Foundation), Publisher, Year, Description.
-     - **[5/7] HF Token**: Paste the `hf_...` token.
-     - **[6/7 & 7/7] Confirmation & Upload**: Press Enter to confirm, and let the tool automatically build the representative directory and commit to Hugging Face!
+   - Explain what will happen:
+     - **Phase 1**: Paste my `hf_...` write token when asked. The tool will validate it immediately.
+     - **Phase 2**: If the repository isn't cloned yet, choose option `1` to let it clone `corpus-archive` locally and sync with remote.
+     - **Phase 3**: At the action menu, type `1` to archive a PDF document.
+     - **Phase 4**:
+       - Pick my PDF from the numbered list of discovered files.
+       - Select category (1 to 7).
+       - Select language (`1` for Hmar).
+       - Enter Title, Author, Publisher, Year, and Description.
+       - Confirm local writing, then choose `Y` to publish to Hugging Face!
 
-7. **Troubleshooting**:
-   - If I get any error (e.g., "Permission denied", "Repository not found", "Invalid token"), help me solve it calmly and give me the exact command to fix it.
+6. **Troubleshooting**:
+   - If I get any error (e.g., "Permission denied", "Invalid user token", "Repository not found"), help me solve it calmly and give me the exact command to fix it.
 
 ---
 
