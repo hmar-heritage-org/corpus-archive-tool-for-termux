@@ -115,5 +115,5 @@ When you run `python ingest.py`, it proceeds through 4 sequential phases:
 
 ## License & Attribution
 
-Maintained by the **Hmar Heritage Foundation** ([hmarheritage.pages.dev](https://hmarheritage.pages.dev)) under the Hmar Heritage Archival Project.
+Maintained by the **Hmar Heritage Foundation** ([hmarheritage.pages.dev](https://hmarheritage.pages.dev)).
 All archived works retain copyright with their respective original authors and publishing bodies.
