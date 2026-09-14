@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+*$py.class
+staging/
+.corpus_archive_config.json
+.env
+*.pdf
+.DS_Store
