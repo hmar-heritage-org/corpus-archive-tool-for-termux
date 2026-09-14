@@ -85,10 +85,13 @@ def print_banner():
 
 def check_termux_storage():
     """Checks if Termux has storage permission, prompts user if needed."""
+    is_termux = "TERMUX_VERSION" in os.environ or "/data/data/com.termux" in os.environ.get("PREFIX", "")
+    if not is_termux:
+        print(f"{DIM}Desktop Linux / macOS environment detected.{RESET}")
+        return
+
     storage_shared = Path.home() / "storage" / "shared"
     sdcard = Path("/sdcard")
-    
-    # Only test on Android / Linux environments
     if not storage_shared.exists() and not sdcard.exists():
         print(f"{YELLOW}Warning: Internal storage links not detected.{RESET}")
         print("If you are running on Termux, please run:")
@@ -100,7 +103,7 @@ def check_termux_storage():
 
 
 def get_storage_roots():
-    """Identifies root directories for Android internal storage."""
+    """Identifies root directories for Android internal storage or desktop."""
     roots = []
     candidates = [
         Path.home() / "storage" / "shared",
@@ -108,7 +111,9 @@ def get_storage_roots():
         Path("/sdcard"),
         Path("/storage/emulated/0"),
         Path.home() / "Downloads",
-        Path.home()
+        Path.home() / "Documents",
+        Path.home() / "Work",
+        Path.cwd()
     ]
     for c in candidates:
         if c.exists() and c.is_dir() and c not in roots:
@@ -533,11 +538,8 @@ def main():
     # Step 4: Bibliographical details
     details = prompt_details(suggested_title)
 
-    # Step 5: Auth Token
-    token = get_hf_token()
-
-    # Step 6: Fetch remote indexes & compute ID
-    downloaded_files = fetch_remote_indexes(token)
+    # Step 5: Fetch remote indexes (public) & compute ID
+    downloaded_files = fetch_remote_indexes(token=None)
     next_id = compute_next_id(downloaded_files["viewer"])
 
     record = {
@@ -561,7 +563,7 @@ def main():
     print(f"  Source File:            {source_pdf.name}")
     print(f"  Target Archive Path:    data/pdf/{record['id']}/file.pdf")
 
-    confirm = input(f"\nProceed with local staging and commit? (Y/n): ").strip().lower()
+    confirm = input(f"\nProceed with generating local representative staging? (Y/n): ").strip().lower()
     if confirm not in ("", "y", "yes"):
         print("Ingestion aborted.")
         sys.exit(0)
@@ -574,7 +576,19 @@ def main():
 
     staged_files = build_representative_directory(staging_dir, source_pdf, record, downloaded_files)
 
-    # Upload to Hugging Face
+    print(f"\n{GREEN}{BOLD}✓ Local Representative Staging Generated:{RESET}")
+    print(f"  Folder: {CYAN}{staging_dir.resolve()}{RESET}")
+
+    # Prompt for Upload
+    upload_choice = input(f"\nUpload to Hugging Face now? (Y/n or D for dry-run only): ").strip().lower()
+    if upload_choice in ("d", "dry", "dry-run", "n", "no"):
+        print(f"\n{GREEN}{BOLD}✓ DRY-RUN COMPLETE!{RESET}")
+        print(f"All files have been staged cleanly in: {CYAN}{staging_dir}{RESET}")
+        print("Hugging Face was NOT modified. You can inspect the staged files anytime.")
+        return
+
+    # Authenticate and Upload
+    token = get_hf_token()
     upload_to_huggingface(token, record["id"], record["title"], staged_files)
 
 
