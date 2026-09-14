@@ -48,6 +48,19 @@ python ingest.py
 
 ---
 
+## Quickstart Guide (Linux / macOS Desktop)
+
+If testing or running on desktop:
+
+```bash
+git clone https://github.com/hmar-heritage-org/corpus-archive-tool-for-termux.git
+cd corpus-archive-tool-for-termux
+pip install -r requirements.txt
+python3 ingest.py
+```
+
+---
+
 ## Hugging Face Authentication Token
 
 To push documents to `hmar-heritage-org/corpus-archive`, you need a **Hugging Face Access Token** with **Write** permission:
