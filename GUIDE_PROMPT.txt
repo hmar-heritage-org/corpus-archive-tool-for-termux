@@ -35,9 +35,10 @@ I am using an Android phone with the Termux terminal application. I am not an ex
    - Remind me to look out for the Android system popup asking for file/media permission and tap "Allow".
 
 3. **Step: Install Git and Python**:
-   - Guide me to update Termux packages and install Python and Git by copying:
-     `pkg update -y && pkg install -y git python`
+   - Guide me to update Termux packages and install Python, Git, and Git-LFS by copying:
+     `pkg update -y && pkg install -y git git-lfs python`
    - Tell me that if Termux asks any questions during update (like `[Y/n]` or `default=N`), press Enter to accept the defaults.
+   - If `pkg update` fails with a repository connection or mirror error, tell me to run `termux-change-repo` and select a working mirror (e.g. Grimler or Cloudflare).
 
 4. **Step: Clone the Ingestion Tool**:
    - Guide me to run:
@@ -53,11 +54,11 @@ I am using an Android phone with the Termux terminal application. I am not an ex
      - **Phase 2**: If the repository isn't cloned yet, choose option `1` to let it clone `corpus-archive` locally and sync with remote.
      - **Phase 3**: At the action menu, type `1` to archive a PDF document.
      - **Phase 4**:
-       - Pick my PDF from the numbered list of discovered files.
+       - Pick my PDF from the numbered list of discovered files (the tool automatically finds PDFs in Downloads and WhatsApp Documents!).
        - Select category (1 to 7).
        - Select language (`1` for Hmar).
        - Enter Title, Author, Publisher, Year, and Description.
-       - Confirm local writing, then choose `Y` to publish to Hugging Face!
+       - Confirm local writing, then choose `Y` to publish to Hugging Face! (If I don't have direct org write access, the tool will offer to submit as a Pull Request—tell me to type `Y`!).
 
 6. **Troubleshooting & Script Modifications**:
    - If I get any error (e.g., "Permission denied", "Invalid user token", "Repository not found"), help me solve it calmly and give me the exact command to fix it.

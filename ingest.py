@@ -59,7 +59,6 @@ LANGUAGES = [
 ]
 
 EXCLUDE_DIRS = {
-    "Android",
     "node_modules",
     "vendor",
     "gems",
@@ -475,10 +474,12 @@ def scan_storage_for_pdfs(max_results=20):
     for root in roots:
         try:
             for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
-                # Prune excluded directories in-place
+                # Prune excluded directories in-place (allow Android/media for WhatsApp/Telegram)
                 dirnames[:] = [
                     d for d in dirnames
-                    if not d.startswith(".") and d not in EXCLUDE_DIRS
+                    if not d.startswith(".")
+                    and d not in EXCLUDE_DIRS
+                    and not (d in ("data", "obb") and Path(dirpath).name == "Android")
                 ]
 
                 for fname in filenames:
@@ -812,19 +813,43 @@ def push_to_remote(repo_path: Path, item_id: str, title: str, token: str, userna
             CommitOperationAdd(path_in_repo="README.md", path_or_fileobj=str(readme)),
         ]
 
-        print("Executing atomic commit via Hugging Face API...")
-        api.create_commit(
-            repo_id=REPO_ID,
-            repo_type="dataset",
-            operations=operations,
-            commit_message=commit_msg
-        )
+        try:
+            print("Executing atomic commit via Hugging Face API...")
+            api.create_commit(
+                repo_id=REPO_ID,
+                repo_type="dataset",
+                operations=operations,
+                commit_message=commit_msg
+            )
 
-        print(f"\n{GREEN}{BOLD}══════════════════════════════════════════════════════════════{RESET}")
-        print(f"{GREEN}{BOLD}✓ SUCCESS! Item {item_id} published live to Hugging Face!{RESET}")
-        print(f"{GREEN}{BOLD}══════════════════════════════════════════════════════════════{RESET}")
-        print(f"\nDataset URL: {CYAN}{REPO_URL}{RESET}")
-        print(f"Item Link:   {CYAN}{REPO_URL}/tree/main/data/pdf/{item_id}{RESET}")
+            print(f"\n{GREEN}{BOLD}══════════════════════════════════════════════════════════════{RESET}")
+            print(f"{GREEN}{BOLD}✓ SUCCESS! Item {item_id} published live to Hugging Face!{RESET}")
+            print(f"{GREEN}{BOLD}══════════════════════════════════════════════════════════════{RESET}")
+            print(f"\nDataset URL: {CYAN}{REPO_URL}{RESET}")
+            print(f"Item Link:   {CYAN}{REPO_URL}/tree/main/data/pdf/{item_id}{RESET}")
+
+        except Exception as api_err:
+            err_str = str(api_err).lower()
+            if "403" in err_str or "permission" in err_str or "forbidden" in err_str:
+                print(f"\n{YELLOW}Note: Direct write access to '{REPO_ID}' not granted for @{username}.{RESET}")
+                pr_choice = safe_input("Would you like to submit this as a Hugging Face Pull Request? (Y/n): ").lower()
+                if pr_choice in ("", "y", "yes"):
+                    print("Submitting as a Community Pull Request to Hugging Face...")
+                    commit_info = api.create_commit(
+                        repo_id=REPO_ID,
+                        repo_type="dataset",
+                        operations=operations,
+                        commit_message=commit_msg,
+                        create_pr=True
+                    )
+                    pr_url = getattr(commit_info, "pr_url", f"{REPO_URL}/discussions")
+                    print(f"\n{GREEN}{BOLD}══════════════════════════════════════════════════════════════{RESET}")
+                    print(f"{GREEN}{BOLD}✓ SUCCESS! Pull Request submitted for Item {item_id}!{RESET}")
+                    print(f"{GREEN}{BOLD}══════════════════════════════════════════════════════════════{RESET}")
+                    print(f"\nReview PR: {CYAN}{pr_url}{RESET}")
+                    print("The Hmar Heritage Foundation maintainers will review and merge your addition.")
+                    return
+            raise api_err
 
     except Exception as e:
         print(f"\n{RED}Upload failed: {e}{RESET}")
