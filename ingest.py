@@ -86,6 +86,32 @@ def print_banner():
     print(f"{RESET}")
 
 
+def graceful_exit(message: str = None, code: int = 0):
+    """Prints a clean, friendly exit message without stack traces."""
+    if message:
+        print(f"\n{YELLOW}{message}{RESET}")
+    else:
+        print(f"\n{CYAN}{BOLD}Thank you for contributing to the Hmar Heritage Foundation Archive!{RESET}")
+        print(f"Session closed cleanly.\n")
+    sys.exit(code)
+
+
+def safe_input(prompt_text: str = "", allow_back: bool = False) -> str:
+    """
+    Safely captures user input, catching KeyboardInterrupt (Ctrl+C) and EOFError (Ctrl+D).
+    Returns '__BACK__' if allow_back is enabled and user inputs 'b' or 'back'.
+    """
+    try:
+        val = input(prompt_text).strip()
+        if allow_back and val.lower() in ("b", "back"):
+            return "__BACK__"
+        return val
+    except KeyboardInterrupt:
+        graceful_exit("\n[!] Operation cancelled by user (Ctrl+C). Exiting cleanly...")
+    except EOFError:
+        graceful_exit("\n[!] Session ended (EOF).")
+
+
 def load_config() -> dict:
     if CONFIG_FILE.exists():
         try:
@@ -143,7 +169,7 @@ def ensure_termux_storage() -> bool:
         print(f"{YELLOW}Note: 'termux-setup-storage' binary not found. Skipping auto-trigger.{RESET}")
 
     print(f"\n{CYAN}{BOLD}👉 Look at your phone screen and tap 'ALLOW' on the Android permissions popup.{RESET}")
-    input(f"Once you have tapped 'Allow', press {BOLD}[ENTER]{RESET} to continue...")
+    safe_input(f"Once you have tapped 'Allow', press {BOLD}[ENTER]{RESET} to continue...")
 
     # Wait up to 5 seconds for Termux to link the storage directory
     for _ in range(5):
@@ -161,7 +187,7 @@ def ensure_termux_storage() -> bool:
     print(f"\n{RED}Notice: Storage access could not be confirmed automatically.{RESET}")
     print("If Android did not show the permission popup, you can enable it manually:")
     print(f"  {BOLD}Android Settings -> Apps -> Termux -> Permissions -> Files and media -> Allow{RESET}")
-    retry = input("\nWould you like to run 'termux-setup-storage' again? (Y/n): ").strip().lower()
+    retry = safe_input("\nWould you like to run 'termux-setup-storage' again? (Y/n): ").lower()
     if retry in ("", "y", "yes"):
         return ensure_termux_storage()
     return False
@@ -228,7 +254,9 @@ def get_and_validate_token(force_prompt=False) -> tuple[str, str]:
     print(f"You can create one in 10 seconds at: {CYAN}https://huggingface.co/settings/tokens{RESET}")
 
     while True:
-        token_input = input(f"\nEnter your HF Write Token (starts with 'hf_...'): ").strip()
+        token_input = safe_input(f"\nEnter your HF Write Token (or Q to exit): ")
+        if token_input.lower() in ("q", "quit", "exit"):
+            graceful_exit("Authentication aborted. Exiting tool.")
         if not token_input:
             print(f"{RED}Token cannot be empty.{RESET}")
             continue
@@ -331,7 +359,9 @@ def verify_or_clone_repo(token: str, username: str) -> Path:
     print(f"  [{CYAN}2{RESET}] Provide custom path to an existing local clone")
 
     while True:
-        choice = input("\nSelect option (1 or 2, default 1): ").strip()
+        choice = safe_input("\nSelect option (1 or 2, or Q to exit, default 1): ").lower()
+        if choice in ("q", "quit", "exit"):
+            graceful_exit("Repository setup aborted.")
         if not choice or choice == "1":
             target_dir = curr / "corpus-archive"
             print(f"\nCloning {CYAN}{REPO_URL}{RESET} into {target_dir.name}...")
@@ -362,7 +392,11 @@ def verify_or_clone_repo(token: str, username: str) -> Path:
 
         elif choice == "2":
             while True:
-                custom_input = input("\nEnter full path to local corpus-archive directory: ").strip().strip("'\"")
+                custom_input = safe_input("\nEnter full path to local corpus-archive directory (or B to go back): ").strip("'\"")
+                if custom_input.lower() in ("b", "back"):
+                    break
+                if custom_input.lower() in ("q", "quit", "exit"):
+                    graceful_exit("Repository setup aborted.")
                 p = Path(custom_input).expanduser().resolve()
                 if is_valid_corpus_repo(p):
                     print(f"  {GREEN}✓ Valid repository verified at {p}{RESET}")
@@ -388,7 +422,7 @@ def display_action_menu() -> str:
     print(f"  [{CYAN}Q{RESET}] Exit")
 
     while True:
-        choice = input(f"\nEnter choice ({CYAN}1{RESET}, 2-5, or Q): ").strip().lower()
+        choice = safe_input(f"\nEnter choice ({CYAN}1{RESET}, 2-5, or Q): ").lower()
         if choice in ("1", "add", "pdf"):
             return "1"
         elif choice in ("2", "3", "4"):
@@ -403,8 +437,7 @@ def display_action_menu() -> str:
         elif choice == "5":
             return "5"
         elif choice in ("q", "quit", "exit"):
-            print("Exiting tool. Goodbye!")
-            sys.exit(0)
+            graceful_exit("Exiting tool. Have a great day!")
         print(f"{RED}Invalid selection. Enter 1 to archive a PDF or Q to quit.{RESET}")
 
 
@@ -478,19 +511,24 @@ def select_pdf():
 
         print(f"\n  [{CYAN} C{RESET}] Enter a custom file path manually")
         print(f"  [{CYAN} R{RESET}] Rescan storage")
+        print(f"  [{CYAN} B{RESET}] Back to Main Menu")
 
         while True:
-            choice = input(f"\nSelect an option (1-{len(pdfs)} or C/R): ").strip()
-            if choice.lower() == "r":
+            choice = safe_input(f"\nSelect an option (1-{len(pdfs)} or C/R/B): ", allow_back=True).lower()
+            if choice in ("b", "back", "__back__"):
+                return None
+            if choice == "r":
                 return select_pdf()
-            if choice.lower() == "c":
+            if choice == "c":
                 break
             if choice.isdigit() and 1 <= int(choice) <= len(pdfs):
                 return pdfs[int(choice) - 1][0]
-            print(f"{RED}Invalid option. Enter a number between 1 and {len(pdfs)}, or 'C'.{RESET}")
+            print(f"{RED}Invalid option. Enter a number between 1 and {len(pdfs)}, 'C', or 'B' to go back.{RESET}")
 
     while True:
-        raw_path = input("\nEnter full path to PDF file: ").strip().strip("'\"")
+        raw_path = safe_input("\nEnter full path to PDF file (or B to go back): ", allow_back=True).strip("'\"")
+        if raw_path.lower() in ("b", "back", "__back__"):
+            return None
         p = Path(raw_path).expanduser().resolve()
         if p.exists() and p.is_file() and p.suffix.lower() == ".pdf":
             return p
@@ -501,19 +539,27 @@ def select_category():
     print(f"\n{BOLD}{CYAN}--- Step 2: Document Classification ---{RESET}")
     for idx, cat in enumerate(CATEGORIES, 1):
         print(f"  [{CYAN}{idx}{RESET}] {cat}")
+    print(f"  [{CYAN}B{RESET}] Back to Main Menu")
+
     while True:
-        choice = input(f"\nChoose category (1-{len(CATEGORIES)}): ").strip()
+        choice = safe_input(f"\nChoose category (1-{len(CATEGORIES)} or B): ", allow_back=True).lower()
+        if choice in ("b", "back", "__back__"):
+            return None
         if choice.isdigit() and 1 <= int(choice) <= len(CATEGORIES):
             return CATEGORIES[int(choice) - 1]
-        print(f"{RED}Invalid selection. Choose between 1 and {len(CATEGORIES)}.{RESET}")
+        print(f"{RED}Invalid selection. Choose between 1 and {len(CATEGORIES)}, or 'B'.{RESET}")
 
 
 def select_language():
     print(f"\n{BOLD}{CYAN}--- Step 3: Primary Content Language ---{RESET}")
     for idx, (code, name) in enumerate(LANGUAGES, 1):
         print(f"  [{CYAN}{idx}{RESET}] {name} ({code})")
+    print(f"  [{CYAN}B{RESET}] Back to Main Menu")
+
     while True:
-        choice = input(f"\nChoose language (1-{len(LANGUAGES)}, default 1 for Hmar): ").strip()
+        choice = safe_input(f"\nChoose language (1-{len(LANGUAGES)}, default 1 for Hmar, or B): ", allow_back=True).lower()
+        if choice in ("b", "back", "__back__"):
+            return None
         if not choice:
             return "hmr"
         if choice.isdigit() and 1 <= int(choice) <= len(LANGUAGES):
@@ -522,26 +568,30 @@ def select_language():
 
 
 def prompt_details(suggested_title=""):
-    print(f"\n{BOLD}{CYAN}--- Step 4: Bibliographical Metadata ---{RESET}")
+    print(f"\n{BOLD}{CYAN}--- Step 4: Bibliographical Metadata (Type 'B' to cancel) ---{RESET}")
     title = ""
     while not title:
         default_prompt = f" [{suggested_title}]" if suggested_title else ""
-        title_in = input(f"Document / Book Title{default_prompt}: ").strip()
+        title_in = safe_input(f"Document / Book Title{default_prompt}: ", allow_back=True)
+        if title_in.lower() in ("b", "back", "__back__"):
+            return None
         title = title_in if title_in else suggested_title
         if not title:
             print(f"{RED}Title is required.{RESET}")
 
-    raw_authors = input("Author(s) or Publishing Body (comma-separated, default: Hmar Heritage Foundation): ").strip()
+    raw_authors = safe_input("Author(s) or Publishing Body (comma-separated, default: Hmar Heritage Foundation): ", allow_back=True)
+    if raw_authors.lower() in ("b", "back", "__back__"):
+        return None
     if not raw_authors:
         authors = ["Hmar Heritage Foundation"]
     else:
         authors = [a.strip() for a in raw_authors.split(",") if a.strip()]
 
-    publisher = input("Publisher / Society (optional, e.g. HLS, BSI, NEHU): ").strip()
-    year_str = input("Publication Year (optional, e.g. 1996): ").strip()
+    publisher = safe_input("Publisher / Society (optional, e.g. HLS, BSI, NEHU): ")
+    year_str = safe_input("Publication Year (optional, e.g. 1996): ")
     year = int(year_str) if year_str.isdigit() else None
 
-    description = input("Brief Description / Summary (optional): ").strip()
+    description = safe_input("Brief Description / Summary (optional): ")
     if not description:
         description = f"Digitized document: {title}."
 
@@ -770,11 +820,26 @@ def push_to_remote(repo_path: Path, item_id: str, title: str, token: str, userna
 
 def run_pdf_ingestion(repo_path: Path, token: str, username: str):
     source_pdf = select_pdf()
+    if not source_pdf:
+        print(f"\n{DIM}Ingestion cancelled. Returning to action menu...{RESET}")
+        return
+
     suggested_title = source_pdf.stem.replace("_", " ").replace("-", " ").title()
 
     category = select_category()
+    if not category:
+        print(f"\n{DIM}Ingestion cancelled. Returning to action menu...{RESET}")
+        return
+
     language = select_language()
+    if not language:
+        print(f"\n{DIM}Ingestion cancelled. Returning to action menu...{RESET}")
+        return
+
     details = prompt_details(suggested_title)
+    if not details:
+        print(f"\n{DIM}Ingestion cancelled. Returning to action menu...{RESET}")
+        return
 
     next_id = compute_next_id(repo_path)
 
@@ -799,9 +864,9 @@ def run_pdf_ingestion(repo_path: Path, token: str, username: str):
     print(f"  Source File:            {source_pdf.name}")
     print(f"  Target Archive Path:    data/pdf/{record['id']}/file.pdf")
 
-    confirm = input(f"\nWrite files to local repository? (Y/n): ").strip().lower()
+    confirm = safe_input(f"\nWrite files to local repository? (Y/n): ").lower()
     if confirm not in ("", "y", "yes"):
-        print("Archival cancelled.")
+        print(f"{YELLOW}Archival cancelled. Returning to main menu.{RESET}")
         return
 
     # Ingest locally
@@ -809,7 +874,7 @@ def run_pdf_ingestion(repo_path: Path, token: str, username: str):
 
     # Publish option
     print(f"\n{BOLD}Ready to publish to Hugging Face!{RESET}")
-    pub_choice = input("Commit and push to Hugging Face now? (Y/n or D for dry-run): ").strip().lower()
+    pub_choice = safe_input("Commit and push to Hugging Face now? (Y/n or D for dry-run): ").lower()
     if pub_choice in ("d", "dry", "dry-run", "n", "no"):
         print(f"\n{GREEN}{BOLD}✓ Local Archival Complete (Dry-Run)!{RESET}")
         print(f"All files updated locally in: {CYAN}{repo_path}{RESET}")
@@ -834,14 +899,21 @@ def main():
         if action == "1":
             run_pdf_ingestion(repo_path, token, username)
             print(f"\n{CYAN}------------------------------------------------------------{RESET}")
-            another = input("Would you like to archive another document? (y/N): ").strip().lower()
+            another = safe_input("Would you like to archive another document? (y/N): ").lower()
             if another not in ("y", "yes"):
-                print(f"\nThank you for contributing to the Hmar Heritage Foundation Archive!")
-                break
+                graceful_exit()
         elif action == "5":
             token, username = get_and_validate_token(force_prompt=True)
             repo_path = verify_or_clone_repo(token, username)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        graceful_exit("\n[!] Process interrupted by user (Ctrl+C). No partial changes were saved.")
+    except EOFError:
+        graceful_exit("\n[!] Session ended (EOF).")
+    except Exception as e:
+        print(f"\n{RED}{BOLD}[Error]{RESET} An unexpected error occurred: {e}")
+        sys.exit(1)
