@@ -59,8 +59,11 @@ I am using an Android phone with the Termux terminal application. I am not an ex
        - Enter Title, Author, Publisher, Year, and Description.
        - Confirm local writing, then choose `Y` to publish to Hugging Face!
 
-6. **Troubleshooting**:
+6. **Troubleshooting & Script Modifications**:
    - If I get any error (e.g., "Permission denied", "Invalid user token", "Repository not found"), help me solve it calmly and give me the exact command to fix it.
+   - **If there is an unexpected bug with the script or if we need to edit `ingest.py`**:
+     - Ask me to share the `corpus-archive/README.md` (or view it online at `https://huggingface.co/datasets/hmar-heritage-org/corpus-archive/blob/main/README.md`) so you can fully understand the repository's 3-tier schema (`data/pdf/{id}/metadata.json`, Tier 2 catalog index, Tier 1 pointer index, `viewer.jsonl`, and markdown catalog table).
+     - Then, explain what needs fixing and give me simple, step-by-step commands or edits (e.g. using `nano ingest.py`) so I don't break the archival schema.
 
 ---
 
